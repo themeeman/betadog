@@ -10,7 +10,7 @@ pub struct Error {
 }
 
 pub fn parse(toks: Vec<Tok>, ops: HashMap<String, i8>) -> Result<Expr, Error> {
-    let mut parser = Parser{toks: toks.iter().peekable(), binary_ops: ops, unary_ops: HashMap::new()};
+    let mut parser = Parser{toks: toks.iter().peekable(), binary_ops: ops};
     let ast = parser.parse_expr();
     match ast {
         Ok(ast) => if !parser.is_done() {
@@ -23,7 +23,6 @@ pub fn parse(toks: Vec<Tok>, ops: HashMap<String, i8>) -> Result<Expr, Error> {
 }
 
 struct Parser<'a> {
-    unary_ops: HashMap<String, i8>,
     binary_ops: HashMap<String, i8>,
     toks: Peekable<Iter<'a, Tok>>,
 }
@@ -76,17 +75,17 @@ impl Parser<'_> {
                                 Some(p) => p,
                                 None => return Err(Error{message: format!("Unknown operator {}", op)}),
                             }
-                            _ => return Ok(Expr::new(&op[..], lhs, rhs).unwrap()),
+                            _ => return Ok(Expr::new_binary(&op[..], lhs, rhs).unwrap()),
                         }
                         
                     } else {
-                        return Ok(Expr::new(&op[..], lhs, rhs).unwrap());
+                        return Ok(Expr::new_binary(&op[..], lhs, rhs).unwrap());
                     };
 
                     if prec > *next_prec {
-                        self.parse_bin_op_rhs(expr_prec + 1, Expr::new(op, lhs, rhs).unwrap())
+                        self.parse_bin_op_rhs(expr_prec + 1, Expr::new_binary(op, lhs, rhs).unwrap())
                     } else {
-                        Ok(Expr::new(op, lhs, self.parse_bin_op_rhs(expr_prec + 1, rhs)?).unwrap())
+                        Ok(Expr::new_binary(op, lhs, self.parse_bin_op_rhs(expr_prec + 1, rhs)?).unwrap())
                     }
                 
                 }
@@ -95,16 +94,6 @@ impl Parser<'_> {
         }
         Ok(lhs)
     }
-
-    fn current_op_prec(&mut self) -> Option<i8> {
-        if let Some(tok) = self.toks.peek() {
-            return match tok {
-                Tok::Op(op) => self.binary_ops.get(op).map(|x| *x),
-                _ => None,
-            }
-        }
-        None
-    }
     
     fn parse_primary(&mut self) -> Result<Expr, Error> {
         if let Some(tok) = self.toks.peek() {
@@ -112,6 +101,13 @@ impl Parser<'_> {
                 Tok::Lit(c) => { 
                     self.toks.next(); // Eats constant
                     Ok(Expr::Const(*c)) 
+                },
+                Tok::Op(op) => {
+                    self.toks.next(); // Eats op
+                    match Expr::new_unary(op, self.parse_primary()?) {
+                        Some(v) => Ok(v),
+                        None => Err(Error{message: format!("Unknown unary operator {}", op)})
+                    }
                 },
                 Tok::LParen => self.parse_paren_expr(),
                 _ => Err(Error{message: String::from("Unexpected token")}),

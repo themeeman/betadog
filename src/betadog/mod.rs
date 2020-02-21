@@ -42,8 +42,7 @@ mod tests {
             ops.insert(String::from("-"), 20);
             ops
         };
-
-        let parse = |toks| super::parser::parse(toks, ops.clone());
+        let parse = |toks| parse(toks, ops.clone());
         assert!(parse(Vec::new()).is_err());
         assert_eq!(parse(vec![Lit(Int(5))]), Ok(Const(Int(5))));
     }

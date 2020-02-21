@@ -1,38 +1,50 @@
 use super::expr::{Const, Expr};
 
 fn add_const(lhs: Const, rhs: Const) -> Const {
+    use Const::*;
     match (lhs, rhs) {
-        (Const::Int(i), Const::Int(j)) => Const::Int(i + j),
-        (Const::Int(i), Const::Float(j)) => Const::Float(i as f64 + j),
-        (Const::Float(i), Const::Int(j)) => Const::Float(i + j as f64),
-        (Const::Float(i), Const::Float(j)) => Const::Float(i + j),
+        (Int(i), Int(j)) => Int(i + j),
+        (Int(i), Float(j)) => Float(i as f64 + j),
+        (Float(i), Int(j)) => Float(i + j as f64),
+        (Float(i), Float(j)) => Float(i + j),
     }
 }
 
 fn sub_const(lhs: Const, rhs: Const) -> Const {
+    use Const::*;
     match (lhs, rhs) {
-        (Const::Int(i), Const::Int(j)) => Const::Int(i - j),
-        (Const::Int(i), Const::Float(j)) => Const::Float(i as f64 - j),
-        (Const::Float(i), Const::Int(j)) => Const::Float(i - j as f64),
-        (Const::Float(i), Const::Float(j)) => Const::Float(i - j),
+        (Int(i), Int(j)) => Int(i - j),
+        (Int(i), Float(j)) => Float(i as f64 - j),
+        (Float(i), Int(j)) => Float(i - j as f64),
+        (Float(i), Float(j)) => Float(i - j),
     }
 }
 
 fn mul_const(lhs: Const, rhs: Const) -> Const {
+    use Const::*;
     match (lhs, rhs) {
-        (Const::Int(i), Const::Int(j)) => Const::Int(i * j),
-        (Const::Int(i), Const::Float(j)) => Const::Float(i as f64 * j),
-        (Const::Float(i), Const::Int(j)) => Const::Float(i * j as f64),
-        (Const::Float(i), Const::Float(j)) => Const::Float(i * j),
+        (Int(i), Int(j)) => Int(i * j),
+        (Int(i), Float(j)) => Float(i as f64 * j),
+        (Float(i), Int(j)) => Float(i * j as f64),
+        (Float(i), Float(j)) => Float(i * j),
     }
 }
 
 fn div_const(lhs: Const, rhs: Const) -> Const {
+    use Const::*;
     match (lhs, rhs) {
-        (Const::Int(i), Const::Int(j)) => Const::Float(i as f64 / j as f64),
-        (Const::Int(i), Const::Float(j)) => Const::Float(i as f64 / j),
-        (Const::Float(i), Const::Int(j)) => Const::Float(i / j as f64),
-        (Const::Float(i), Const::Float(j)) => Const::Float(i / j),
+        (Int(i), Int(j)) => Float(i as f64 / j as f64),
+        (Int(i), Float(j)) => Float(i as f64 / j),
+        (Float(i), Int(j)) => Float(i / j as f64),
+        (Float(i), Float(j)) => Float(i / j),
+    }
+}
+
+fn negate_const(expr: Const) -> Const {
+    use Const::*;
+    match expr {
+        Int(i) => Int(-i),
+        Float(i) => Float(-i),
     }
 }
 
@@ -42,6 +54,8 @@ pub fn eval(expr: Expr) -> Const {
         Expr::Sub(lhs, rhs) => sub_const(eval(*lhs), eval(*rhs)),
         Expr::Mul(lhs, rhs) => mul_const(eval(*lhs), eval(*rhs)),
         Expr::Div(lhs, rhs) => div_const(eval(*lhs), eval(*rhs)),
+        Expr::Neg(expr) => negate_const(eval(*expr)),
+        Expr::Null(expr) => eval(*expr),
         Expr::Const(c) => c,
     }
 }

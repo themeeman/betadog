@@ -34,6 +34,8 @@ pub enum Expr {
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
+    Neg(Box<Expr>),
+    Null(Box<Expr>),
     Const(Const)
 }
 
@@ -44,6 +46,8 @@ impl fmt::Display for Expr {
             Expr::Sub(lhs, rhs) => write!(f, "(- {} {})", *lhs, *rhs),
             Expr::Mul(lhs, rhs) => write!(f, "(* {} {})", *lhs, *rhs),
             Expr::Div(lhs, rhs) => write!(f, "(/ {} {})", *lhs, *rhs),
+            Expr::Neg(v) => write!(f, "(- {})", *v),
+            Expr::Null(v) => write!(f, "(+ {})", *v),
             Expr::Const(c) => write!(f, "{}", c),
         }
     }
@@ -57,6 +61,8 @@ impl PartialEq for Expr {
             (Sub(llhs, lrhs), Sub(rlhs, rrhs)) => **llhs == **rlhs && **lrhs == **rrhs,
             (Mul(llhs, lrhs), Mul(rlhs, rrhs)) => **llhs == **rlhs && **lrhs == **rrhs,
             (Div(llhs, lrhs), Div(rlhs, rrhs)) => **llhs == **rlhs && **lrhs == **rrhs,
+            (Neg(lhs), Neg(rhs)) => **lhs == **rhs,
+            (Null(lhs), Null(rhs)) => **lhs == **rhs,
             (Const(lhs), Const(rhs)) => lhs == rhs,
             (_, _) => false
         }
@@ -64,7 +70,7 @@ impl PartialEq for Expr {
 }
 
 impl Expr {
-    pub fn new(op: &str, lhs: Expr, rhs: Expr) -> Option<Expr> {
+    pub fn new_binary(op: &str, lhs: Expr, rhs: Expr) -> Option<Expr> {
         match op {
             "+" => Some(Expr::Add(Box::from(lhs), Box::from(rhs))),
             "-" => Some(Expr::Sub(Box::from(lhs), Box::from(rhs))),
@@ -73,4 +79,12 @@ impl Expr {
             _ => None,
         }
     }
+
+    pub fn new_unary(op: &str, expr: Expr) -> Option<Expr> {
+        match op {
+            "+" => Some(Expr::Null(Box::from(expr))),
+            "-" => Some(Expr::Neg(Box::from(expr))),
+            _ => None,
+        }
+    }    
 }
