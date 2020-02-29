@@ -1,5 +1,5 @@
 use super::lexer::Tok;
-use super::expr::{Expr};
+use super::expr::{Expr, Const};
 use std::collections::HashMap;
 use std::slice::{Iter};
 use std::iter::{Peekable};
@@ -82,7 +82,7 @@ impl Parser<'_> {
                         return Ok(Expr::new_binary(&op[..], lhs, rhs).unwrap());
                     };
 
-                    if prec > *next_prec {
+                    if prec >= *next_prec {
                         self.parse_bin_op_rhs(expr_prec + 1, Expr::new_binary(op, lhs, rhs).unwrap())
                     } else {
                         Ok(Expr::new_binary(op, lhs, self.parse_bin_op_rhs(expr_prec + 1, rhs)?).unwrap())
@@ -98,6 +98,14 @@ impl Parser<'_> {
     fn parse_primary(&mut self) -> Result<Expr, Error> {
         if let Some(tok) = self.toks.peek() {
             return match *tok {
+                Tok::Inf => {
+                    self.toks.next(); // Eats inf
+                    Ok(Expr::Const(Const::Inf))
+                },
+                Tok::Undef => {
+                    self.toks.next(); // Eats undef
+                    Ok(Expr::Const(Const::Undef))
+                }
                 Tok::Lit(c) => { 
                     self.toks.next(); // Eats constant
                     Ok(Expr::Const(*c)) 

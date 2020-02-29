@@ -1,17 +1,26 @@
 use std::fmt;
 use std::convert;
+use super::rat::Rat;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Const {
     Int(i128),
     Float(f64),
+    Rat(Rat),
+    Inf,
+    NegInf,
+    Undef
 }
 
 impl fmt::Display for Const {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Const::Int(i) => write!(f, "{}", i),
-            Const::Float(i) => write!(f, "{}", i),
+            Const::Float(i) => write!(f, "{:.1}", i),
+            Const::Rat(r) => write!(f, "{}/{}", r.num(), r.den()),
+            Const::Inf => write!(f, "inf"),
+            Const::NegInf => write!(f, "-inf"),
+            Const::Undef => write!(f, "undef"),
         }
     }
 }
