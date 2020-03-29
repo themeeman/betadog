@@ -12,9 +12,6 @@ fn eval_rat(r: rat::Rat) -> Const {
 fn add_const(lhs: Const, rhs: Const) -> Const {
     use Const::*;
     match (lhs, rhs) {
-        (Undef, _) => Undef,
-        (_, Undef) => Undef,
-
         (Int(i), Int(j)) => Int(i + j),
         (Int(i), Float(j)) => Float(i as f64 + j),
         (Float(i), Int(j)) => Float(i + j as f64),
@@ -24,7 +21,6 @@ fn add_const(lhs: Const, rhs: Const) -> Const {
         (Int(i), Rat(j)) => eval_rat(rat::Rat::from(i) + j),
         (Float(i), Rat(j)) => Float(i + f64::from(j)),
         (Rat(i), Rat(j)) => eval_rat(i + j),
-        
         (Inf, NegInf) => Undef,
         (NegInf, Inf) => Undef,
         (_, Inf) => Inf,
@@ -32,6 +28,8 @@ fn add_const(lhs: Const, rhs: Const) -> Const {
         (_, NegInf) => NegInf,
         (NegInf, _) => NegInf,
 
+        (Undef, _) => Undef,
+        (_, Undef) => Undef,
     }
 }
 
@@ -42,9 +40,6 @@ fn sub_const(lhs: Const, rhs: Const) -> Const {
 fn mul_const(lhs: Const, rhs: Const) -> Const {
     use Const::*;
     match (lhs, rhs) {
-        (Undef, _) => Undef,
-        (_, Undef) => Undef,
-
         (Int(i), Int(j)) => Int(i * j),
         (Int(i), Float(j)) => Float(i as f64 * j),
         (Float(i), Int(j)) => Float(i * j as f64),
@@ -60,6 +55,9 @@ fn mul_const(lhs: Const, rhs: Const) -> Const {
 
         (NegInf, x) => mul_infinity_const(negate_const(x)),
         (x, NegInf) => mul_infinity_const(negate_const(x)),
+
+        (Undef, _) => Undef,
+        (_, Undef) => Undef,
     }
 }
 
