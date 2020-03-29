@@ -1,5 +1,4 @@
 use std::fmt;
-use std::convert;
 use super::rat::Rat;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -17,7 +16,7 @@ impl fmt::Display for Const {
         match *self {
             Const::Int(i) => write!(f, "{}", i),
             Const::Float(i) => write!(f, "{:.1}", i),
-            Const::Rat(r) => write!(f, "{}/{}", r.num(), r.den()),
+            Const::Rat(r) => write!(f, "{}", r),
             Const::Inf => write!(f, "inf"),
             Const::NegInf => write!(f, "-inf"),
             Const::Undef => write!(f, "undef"),
@@ -25,39 +24,51 @@ impl fmt::Display for Const {
     }
 }
 
-impl convert::From<i128> for Const {
-    fn from(i: i128) -> Const {
-        Const::Int(i)
-    }
-}
-
-impl convert::From<f64> for Const {
-    fn from(f: f64) -> Const {
-        Const::Float(f)
-    }
-}
-
 #[derive(Debug)]
 pub enum Expr {
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
-    Mul(Box<Expr>, Box<Expr>),
-    Div(Box<Expr>, Box<Expr>),
-    Neg(Box<Expr>),
-    Null(Box<Expr>),
-    Const(Const)
+    Sum(Vec<Box<Expr>>),
+    Prod(Vec<Box<Expr>>),
+    Call(String, Vec<Box<Expr>>),
+    Const(Const),
+}
+
+fn print_sep_vec<T: fmt::Display>(v: &Vec<T>, sep: &str, f: &mut fmt::Formatter) -> fmt::Result {
+    let iter = v.iter();
+    if let Some(ex) = iter.next() {
+        write!(f, "{}", *ex)?;
+        for ex in iter {
+            write!(f, "{}{}", sep, *ex)?;
+        }
+    }
+    Ok(())
+}
+
+fn vec_ptr_eq<T: PartialEq>(lhs: &Vec<Box<T>>, rhs: &Vec<Box<T>>) -> bool {
+    (lhs.len() == rhs.len()) &&
+    lhs.iter()
+        .zip(rhs)
+        .all(|(a, b)| *a == *b)
 }
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expr::Add(lhs, rhs) => write!(f, "(+ {} {})", *lhs, *rhs),
-            Expr::Sub(lhs, rhs) => write!(f, "(- {} {})", *lhs, *rhs),
-            Expr::Mul(lhs, rhs) => write!(f, "(* {} {})", *lhs, *rhs),
-            Expr::Div(lhs, rhs) => write!(f, "(/ {} {})", *lhs, *rhs),
-            Expr::Neg(v) => write!(f, "(- {})", *v),
-            Expr::Null(v) => write!(f, "(+ {})", *v),
-            Expr::Const(c) => write!(f, "{}", c),
+            Expr::Sum(v) => { 
+                write!(f, "(+ ")?;
+                print_sep_vec(v, " ", f)?;
+                write!(f, ")")
+            },
+            Expr::Prod(v) => { 
+                write!(f, "(* ")?;
+                print_sep_vec(v, " ", f)?;
+                write!(f, ")")
+            },
+            Expr::Call(s, v) => {
+                write!(f, "({} ", s)?;
+                print_sep_vec(v, " ", f)?;
+                write!(f, ")")
+            }
+            Expr::Const(c) => write!(f, "{}", c)
         }
     }
 }
@@ -66,34 +77,11 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         use Expr::*;
         match (self, other) {
-            (Add(llhs, lrhs), Add(rlhs, rrhs)) => **llhs == **rlhs && **lrhs == **rrhs,
-            (Sub(llhs, lrhs), Sub(rlhs, rrhs)) => **llhs == **rlhs && **lrhs == **rrhs,
-            (Mul(llhs, lrhs), Mul(rlhs, rrhs)) => **llhs == **rlhs && **lrhs == **rrhs,
-            (Div(llhs, lrhs), Div(rlhs, rrhs)) => **llhs == **rlhs && **lrhs == **rrhs,
-            (Neg(lhs), Neg(rhs)) => **lhs == **rhs,
-            (Null(lhs), Null(rhs)) => **lhs == **rhs,
+            (Sum(lhs), Sum(rhs)) => vec_ptr_eq(lhs, rhs),
+            (Prod(lhs), Prod(rhs)) => vec_ptr_eq(lhs, rhs),
+            (Call(s1, lhs), Call(s2, rhs)) => s1 == s2 && vec_ptr_eq(lhs, rhs),
             (Const(lhs), Const(rhs)) => lhs == rhs,
             (_, _) => false
         }
     }
-}
-
-impl Expr {
-    pub fn new_binary(op: &str, lhs: Expr, rhs: Expr) -> Option<Expr> {
-        match op {
-            "+" => Some(Expr::Add(Box::from(lhs), Box::from(rhs))),
-            "-" => Some(Expr::Sub(Box::from(lhs), Box::from(rhs))),
-            "*" => Some(Expr::Mul(Box::from(lhs), Box::from(rhs))),
-            "/" => Some(Expr::Div(Box::from(lhs), Box::from(rhs))),
-            _ => None,
-        }
-    }
-
-    pub fn new_unary(op: &str, expr: Expr) -> Option<Expr> {
-        match op {
-            "+" => Some(Expr::Null(Box::from(expr))),
-            "-" => Some(Expr::Neg(Box::from(expr))),
-            _ => None,
-        }
-    }    
 }

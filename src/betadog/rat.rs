@@ -1,5 +1,7 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Neg};
 use std::cmp::{Ordering};
+use std::fmt;
+use std::fmt::{Display};
 
 fn gcd(mut lhs: i128, mut rhs: i128) -> i128 {
     loop {
@@ -47,6 +49,12 @@ impl Rat {
 
     pub fn den(self) -> i128 {
         self.den
+    }
+}
+
+impl Display for Rat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", self.num, self.den)
     }
 }
 

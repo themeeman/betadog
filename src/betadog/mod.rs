@@ -17,13 +17,13 @@ mod tests {
         let s = |x| String::from(x);
         use Tok::*;
         assert_eq!(lex(String::new()), Ok(Vec::new()));
-        assert_eq!(lex(s("5")), Ok(vec![Lit(Const::from(5))]));
-        assert_eq!(lex(s("3.14")), Ok(vec![Lit(Const::from(3.14))]));
+        assert_eq!(lex(s("5")), Ok(vec![Lit(Const::Int(5))]));
+        assert_eq!(lex(s("3.14")), Ok(vec![Lit(Const::Float(3.14))]));
         assert_eq!(lex(s("()")), Ok(vec![LParen, RParen]));
         assert!(lex(s("3.3.3.3")).is_err());
         assert!(lex(s(".")).is_err());
-        assert_eq!(lex(s(".0")), Ok(vec![Lit(Const::from(0.0))]));
-        assert_eq!(lex(s("0.")), Ok(vec![Lit(Const::from(0.0))]));
+        assert_eq!(lex(s(".0")), Ok(vec![Lit(Const::Float(0.0))]));
+        assert_eq!(lex(s("0.")), Ok(vec![Lit(Const::Float(0.0))]));
         assert_eq!(lex(s("+ - * / ")), Ok(vec![
             Op(s("+")), Op(s("-")), Op(s("*")), Op(s("/"))
         ]))
