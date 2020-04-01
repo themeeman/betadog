@@ -122,12 +122,15 @@ impl fmt::Display for Expr {
                 write!(f, ")")
             },
             Expr::Pow(lhs, rhs) => write!(f, "(^ {} {})", lhs, rhs),
-            Expr::Call(s, v) => {
-                write!(f, "({} ", s)?;
+            Expr::Neg(expr) => write!(f, "(- {})", expr),
+            Expr::Recipr(expr) => write!(f, "(/ 1 {})", expr),
+            Expr::Call(fun, v) => {
+                write!(f, "({} ", fun)?;
                 print_sep_vec(v, " ", f)?;
                 write!(f, ")")
-            }
-            Expr::Const(c) => write!(f, "{}", c)
+            },
+            Expr::Const(c) => write!(f, "{}", c),
+            Expr::Var(s) => write!(f, "{}", s),
         }
     }
 }
