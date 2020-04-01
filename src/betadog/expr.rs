@@ -110,6 +110,7 @@ pub enum Expr {
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        
         match self {
             Expr::Sum(v) => { 
                 write!(f, "(+ ")?;
