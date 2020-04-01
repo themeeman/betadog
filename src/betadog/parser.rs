@@ -54,42 +54,32 @@ impl Parser<'_> {
     }
     
     fn parse_bin_op_rhs(&mut self, expr_prec: i8, lhs: Expr)  -> Result<Expr, Error> {
-        if let Some(tok) = self.toks.peek() {
-            return match *tok {
-                Tok::Op(op) => {
-                    let prec = match self.binary_ops.get(op) {
-                        Some(p) => *p,
-                        None => return Err(Error{message: format!("Unknown operator {}", op)}),
-                    };
+        if let Some(Tok::Op(op)) = self.toks.peek() {
+            let prec = match self.binary_ops.get(op) {
+                Some(p) => *p,
+                None => return Err(Error{message: format!("Unknown operator {}", op)}),
+            };
 
-                    if prec < expr_prec {
-                        return Ok(lhs);
-                    }
+            if prec < expr_prec {
+                return Ok(lhs);
+            }
 
-                    self.toks.next(); // Eats Op
-                    let rhs = self.parse_primary()?;
+            self.toks.next(); // Eats Op
+            let rhs = self.parse_primary()?;
 
-                    let next_prec = if let Some(next_tok) = self.toks.peek() {
-                        match next_tok {
-                            Tok::Op(next_op) => match self.binary_ops.get(next_op) {
-                                Some(p) => p,
-                                None => return Err(Error{message: format!("Unknown operator {}", op)}),
-                            }
-                            _ => return Ok(Expr::new_binary(&op[..], lhs, rhs).unwrap()),
-                        }
-                        
-                    } else {
-                        return Ok(Expr::new_binary(&op[..], lhs, rhs).unwrap());
-                    };
-
-                    if prec >= *next_prec {
-                        self.parse_bin_op_rhs(expr_prec + 1, Expr::new_binary(op, lhs, rhs).unwrap())
-                    } else {
-                        Ok(Expr::new_binary(op, lhs, self.parse_bin_op_rhs(expr_prec + 1, rhs)?).unwrap())
-                    }
-                
+            let next_prec = if let Some(Tok::Op(next_op)) = self.toks.peek() {
+                match self.binary_ops.get(next_op) {
+                    Some(p) => p,
+                    None => return Err(Error{message: format!("Unknown operator {}", op)}),
                 }
-                _ => Ok(lhs)
+            } else {
+                return Ok(Expr::new_binary(&op[..], lhs, rhs).unwrap());
+            };
+
+            if prec >= *next_prec {
+                self.parse_bin_op_rhs(expr_prec + 1, Expr::new_binary(op, lhs, rhs).unwrap())
+            } else {
+                Ok(Expr::new_binary(op, lhs, self.parse_bin_op_rhs(expr_prec + 1, rhs)?).unwrap())
             }
         }
         Ok(lhs)

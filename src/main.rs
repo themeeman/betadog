@@ -10,7 +10,8 @@ use betadog::parser::{parse};
 
 fn main() {
     let ops = {
-        let mut ops = HashMap::new();
+        let mut ops = HashMap::with_capacity(5);
+        ops.insert(String::from("^"), 60);
         ops.insert(String::from("*"), 40);
         ops.insert(String::from("/"), 40);
         ops.insert(String::from("+"), 20);

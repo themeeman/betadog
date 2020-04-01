@@ -1,14 +1,47 @@
 use std::fmt;
-use super::rat::Rat;
+use std::cmp::Ordering;
+use super::rat;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Const {
     Int(i128),
     Float(f64),
-    Rat(Rat),
+    Rat(rat::Rat),
     Inf,
     NegInf,
     Undef
+}
+
+impl PartialOrd for Const {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        use Const::*;
+        use Ordering::*;
+        match (self, other) {
+            (Undef, Undef) => Some(Equal),
+            (Undef, _) => None,
+            (_, Undef) => None,
+
+            (Inf, Inf) => Some(Equal),
+            (NegInf, NegInf) => Some(Equal),
+
+            (Inf, _) => Some(Greater),
+            (_, Inf) => Some(Less),
+            (NegInf, _) => Some(Less),
+            (_, NegInf) => Some(Greater),
+
+            (Int(x), Int(y)) => Some(x.cmp(y)),
+            (Int(x), Rat(y)) => Some(rat::Rat::from(*x).cmp(y)),
+            (Int(x), Float(y)) => (*x as f64).partial_cmp(y),
+            (Rat(x), Int(y)) => Some(x.cmp(&rat::Rat::from(*y))),
+            (Float(x), Int(y)) => x.partial_cmp(&(*y as f64)),
+
+            (Float(x), Float(y)) => x.partial_cmp(y),
+            (Float(x), Rat(y)) => x.partial_cmp(&f64::from(*y)),
+            (Rat(x), Float(y)) => f64::from(*x).partial_cmp(y),
+
+            (Rat(x), Rat(y)) => Some(x.cmp(y)),
+        }
+    }
 }
 
 impl fmt::Display for Const {
@@ -24,12 +57,31 @@ impl fmt::Display for Const {
     }
 }
 
-#[derive(Debug)]
-pub enum Expr {
-    Sum(Vec<Box<Expr>>),
-    Prod(Vec<Box<Expr>>),
-    Call(String, Vec<Box<Expr>>),
-    Const(Const),
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Func {
+    Sin,
+    Cos,
+    Tan,
+
+    ASin,
+    ACos,
+    ATan,
+    
+    Log,
+    Sqrt,
+    Cbrt,
+    Root,
+
+    Func(String),
+}
+
+impl fmt::Display for Func {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Func::Func(s) => write!(f, "{}", s),
+            x => write!(f, "{:?}", x),
+        }
+    }
 }
 
 fn print_sep_vec<T: fmt::Display>(v: &Vec<T>, sep: &str, f: &mut fmt::Formatter) -> fmt::Result {
@@ -43,11 +95,17 @@ fn print_sep_vec<T: fmt::Display>(v: &Vec<T>, sep: &str, f: &mut fmt::Formatter)
     Ok(())
 }
 
-fn vec_ptr_eq<T: PartialEq>(lhs: &Vec<Box<T>>, rhs: &Vec<Box<T>>) -> bool {
-    (lhs.len() == rhs.len()) &&
-    lhs.iter()
-        .zip(rhs)
-        .all(|(a, b)| *a == *b)
+
+#[derive(Debug, PartialEq)]
+pub enum Expr {
+    Sum(Vec<Box<Expr>>),
+    Prod(Vec<Box<Expr>>),
+    Pow(Box<Expr>, Box<Expr>),
+    Neg(Box<Expr>),
+    Recipr(Box<Expr>),
+    Call(Func, Vec<Box<Expr>>),
+    Const(Const),
+    Var(String),
 }
 
 impl fmt::Display for Expr {
@@ -63,25 +121,13 @@ impl fmt::Display for Expr {
                 print_sep_vec(v, " ", f)?;
                 write!(f, ")")
             },
+            Expr::Pow(lhs, rhs) => write!(f, "(^ {} {})", lhs, rhs),
             Expr::Call(s, v) => {
                 write!(f, "({} ", s)?;
                 print_sep_vec(v, " ", f)?;
                 write!(f, ")")
             }
             Expr::Const(c) => write!(f, "{}", c)
-        }
-    }
-}
-
-impl PartialEq for Expr {
-    fn eq(&self, other: &Self) -> bool {
-        use Expr::*;
-        match (self, other) {
-            (Sum(lhs), Sum(rhs)) => vec_ptr_eq(lhs, rhs),
-            (Prod(lhs), Prod(rhs)) => vec_ptr_eq(lhs, rhs),
-            (Call(s1, lhs), Call(s2, rhs)) => s1 == s2 && vec_ptr_eq(lhs, rhs),
-            (Const(lhs), Const(rhs)) => lhs == rhs,
-            (_, _) => false
         }
     }
 }

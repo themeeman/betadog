@@ -117,15 +117,3 @@ fn mul_infinity_const(expr: Const) -> Const {
         Undef => Undef,
     }
 }
-
-pub fn eval(expr: Expr) -> Const {
-    match expr {
-        Expr::Add(lhs, rhs) => add_const(eval(*lhs), eval(*rhs)),
-        Expr::Sub(lhs, rhs) => sub_const(eval(*lhs), eval(*rhs)),
-        Expr::Mul(lhs, rhs) => mul_const(eval(*lhs), eval(*rhs)),
-        Expr::Div(lhs, rhs) => div_const(eval(*lhs), eval(*rhs)),
-        Expr::Neg(expr) => negate_const(eval(*expr)),
-        Expr::Null(expr) => eval(*expr),
-        Expr::Const(c) => c,
-    }
-}
