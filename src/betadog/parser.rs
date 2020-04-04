@@ -50,39 +50,165 @@ impl Parser<'_> {
     
     fn parse_expr(&mut self) -> Result<Expr, Error> {
         let lhs = self.parse_primary()?;
-        self.parse_bin_op_rhs(0, lhs)
+        if let Some(Tok::Op(op)) = self.toks.peek() {
+            return match &op[..] {
+                "+" | "-" => self.parse_sum_rhs(&lhs),
+                "*" | "/" => { 
+                    let p = self.parse_product_rhs(&lhs)?;
+                    if let Some(Tok::Op(op)) = self.toks.peek() {
+                        match &op[..] {
+                            "+" | "-" => self.parse_sum_rhs(&p),
+                            _ => Ok(p),
+                        }
+                    } else {
+                        Ok(p)
+                    }
+                },
+                _ => { 
+                    let expr = self.parse_bin_op_rhs(&lhs)?;
+                    if let Some(Tok::Op(op)) = self.toks.peek() {
+                        match &op[..] {
+                            "+" | "-" => self.parse_sum_rhs(&expr),
+                            "*" | "/" => { 
+                                let p = self.parse_product_rhs(&expr)?;
+                                if let Some(Tok::Op(op)) = self.toks.peek() {
+                                    match &op[..] {
+                                        "+" | "-" => self.parse_sum_rhs(&p),
+                                        _ => Ok(p),
+                                    }
+                                } else {
+                                    Ok(p)
+                                }
+                            },
+                            _ => Ok(expr),
+                        }
+                    } else {
+                        Ok(expr)
+                    }
+                },
+            };
+        }
+        Ok(lhs)
     }
     
-    fn parse_bin_op_rhs(&mut self, expr_prec: i8, lhs: Expr)  -> Result<Expr, Error> {
+    fn parse_sum_rhs(&mut self, lhs: &Expr) -> Result<Expr, Error> {
+        let mut expr = vec![Box::new(lhs.clone())];
+        macro_rules! f {
+            ($rhs:expr) => {
+                self.toks.next(); // Eats Op
+                let rhs: Expr = $rhs;
+                if let Some(Tok::Op(op)) = self.toks.peek() {
+                    match &op[..] {
+                        "+" | "-" => 
+                            expr.push(Box::new(rhs)),
+                        "*" | "/" => 
+                            expr.push(Box::new(self.parse_product_rhs(&rhs)?)),
+                        op => if self.binary_ops[op] >= self.binary_ops[&String::from("+")] {
+                            expr.push(Box::new(self.parse_bin_op_rhs(&rhs)?));
+                        } else {
+                            return self.parse_bin_op_rhs(&Expr::Sum(expr));
+                        },
+                    }
+                } else {
+                    expr.push(Box::new(rhs));
+                    return Ok(Expr::Sum(expr));
+                };
+            };
+        }
+
+        loop {
+            println!("{}", Expr::Sum(expr.clone()));
+            if let Some(Tok::Op(op)) = self.toks.peek() {
+                match &op[..] {
+                    "+" => {
+                        f!(self.parse_primary()?);
+                    },
+                    "-" => {
+                        f!(Expr::Neg(Box::new(self.parse_primary()?)));
+                    },
+                    _ => unreachable!(),
+                };
+            } else {
+                return Ok(Expr::Sum(expr));
+            }
+        }
+    }
+
+    fn parse_product_rhs(&mut self, lhs: &Expr) -> Result<Expr, Error> {
+        let mut expr = vec![Box::new(lhs.clone())];
+        macro_rules! f {
+            ($rhs:expr) => {
+                self.toks.next(); // Eats Op
+                let rhs: Expr = $rhs;
+                if let Some(Tok::Op(op)) = self.toks.peek() {
+                    match &op[..] {
+                        "+" | "-" => {
+                            expr.push(Box::new(rhs));
+                            return Ok(Expr::Prod(expr));
+                        },
+                        "*" | "/" => 
+                            expr.push(Box::new(rhs)),
+                        op => if self.binary_ops[op] >= self.binary_ops[&String::from("*")] {
+                            expr.push(Box::new(self.parse_bin_op_rhs(&rhs)?));
+                        } else {
+                            return self.parse_bin_op_rhs(&Expr::Prod(expr));
+                        },
+                    }
+                } else {
+                    expr.push(Box::new(rhs));
+                    return Ok(Expr::Prod(expr));
+                };
+            };
+        }
+
+        loop {
+            println!("{}", Expr::Prod(expr.clone()));
+            if let Some(Tok::Op(op)) = self.toks.peek() {
+                match &op[..] {
+                    "*" => {
+                        f!(self.parse_primary()?);
+                    },
+                    "/" => {
+                        f!(Expr::Recipr(Box::new(self.parse_primary()?)));
+                    },
+                    _ => unreachable!(),
+                };
+            } else {
+                return Ok(Expr::Prod(expr));
+            }
+        }
+    }
+
+    fn parse_bin_op_rhs(&mut self, lhs: &Expr)  -> Result<Expr, Error> {
         if let Some(Tok::Op(op)) = self.toks.peek() {
             let prec = match self.binary_ops.get(op) {
                 Some(p) => *p,
                 None => return Err(Error{message: format!("Unknown operator {}", op)}),
             };
 
-            if prec < expr_prec {
-                return Ok(lhs);
-            }
-
             self.toks.next(); // Eats Op
             let rhs = self.parse_primary()?;
 
-            let next_prec = if let Some(Tok::Op(next_op)) = self.toks.peek() {
+            let (next_op, next_prec) = if let Some(Tok::Op(next_op)) = self.toks.peek() {
                 match self.binary_ops.get(next_op) {
-                    Some(p) => p,
+                    Some(p) => (next_op, p),
                     None => return Err(Error{message: format!("Unknown operator {}", op)}),
                 }
             } else {
-                return Ok(Expr::new_binary(&op[..], lhs, rhs).unwrap());
+                return Ok(Expr::new_binary(&op[..], lhs, &rhs).unwrap());
             };
 
-            if prec >= *next_prec {
-                self.parse_bin_op_rhs(expr_prec + 1, Expr::new_binary(op, lhs, rhs).unwrap())
+            if let "+" | "-" | "*" | "/" = &next_op[..] {
+                return Ok(Expr::new_binary(&op[..], lhs, &rhs).unwrap());
+            }
+
+            if prec > *next_prec {
+                return self.parse_bin_op_rhs(&Expr::new_binary(op, lhs, &rhs).unwrap());
             } else {
-                Ok(Expr::new_binary(op, lhs, self.parse_bin_op_rhs(expr_prec + 1, rhs)?).unwrap())
+                return Ok(Expr::new_binary(op, lhs, &self.parse_bin_op_rhs(&rhs)?).unwrap());
             }
         }
-        Ok(lhs)
+        unreachable!();
     }
     
     fn parse_primary(&mut self) -> Result<Expr, Error> {
@@ -102,12 +228,16 @@ impl Parser<'_> {
                 },
                 Tok::Op(op) => {
                     self.toks.next(); // Eats op
-                    match Expr::new_unary(op, self.parse_primary()?) {
+                    match Expr::new_unary(op, &self.parse_primary()?) {
                         Some(v) => Ok(v),
                         None => Err(Error{message: format!("Unknown unary operator {}", op)})
                     }
                 },
                 Tok::LParen => self.parse_paren_expr(),
+                Tok::Iden(s) => {
+                    self.toks.next(); // Eats iden
+                    Ok(Expr::Var(s.clone()))
+                },
                 _ => Err(Error{message: String::from("Unexpected token")}),
             }
         }

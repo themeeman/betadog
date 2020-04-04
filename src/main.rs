@@ -5,7 +5,7 @@ use std::io::Write;
 mod betadog;
 
 use betadog::lexer::{lex};
-use betadog::eval::{eval};
+use betadog::eval;
 use betadog::parser::{parse};
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
                 match parse(toks, ops.clone()) {
                     Ok(ast) => {
                         println!("Parser Output: {}", ast);
-                        println!("Result: {}", eval(ast));
+                        //println!("Result: {}", eval(ast));
                     }
                     Err(err) => println!("{:?}", err),
                 }

@@ -77,7 +77,7 @@ pub enum Func {
 
 impl fmt::Display for Func {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             Func::Func(s) => write!(f, "{}", s),
             x => write!(f, "{:?}", x),
         }
@@ -85,7 +85,7 @@ impl fmt::Display for Func {
 }
 
 fn print_sep_vec<T: fmt::Display>(v: &Vec<T>, sep: &str, f: &mut fmt::Formatter) -> fmt::Result {
-    let iter = v.iter();
+    let mut iter = v.iter();
     if let Some(ex) = iter.next() {
         write!(f, "{}", *ex)?;
         for ex in iter {
@@ -96,7 +96,7 @@ fn print_sep_vec<T: fmt::Display>(v: &Vec<T>, sep: &str, f: &mut fmt::Formatter)
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Sum(Vec<Box<Expr>>),
     Prod(Vec<Box<Expr>>),
@@ -132,6 +132,23 @@ impl fmt::Display for Expr {
             },
             Expr::Const(c) => write!(f, "{}", c),
             Expr::Var(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl Expr {
+    pub fn new_unary(op: &str, expr: &Expr) -> Option<Expr> {
+        match op {
+            "+" => Some(Expr::Sum(vec![Box::new(expr.clone())])),
+            "-" => Some(Expr::Neg(Box::new(expr.clone()))),
+            _ => None,
+        }
+    }
+
+    pub fn new_binary(op: &str, lhs: &Expr, rhs: &Expr) -> Option<Expr> {
+        match op {
+            "^" => Some(Expr::Pow(Box::new(lhs.clone()), Box::new(rhs.clone()))),
+            _ => None,
         }
     }
 }
